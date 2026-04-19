@@ -301,8 +301,8 @@ return (
 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
 <span style={{ fontSize:14, color:"#6b9f7e", letterSpacing:"0.15em", textTransform:"uppercase" }}>{nineLabels[si]}</span>
 {winner === null ? <span style={{ fontSize:13, color:"#374a3c" }}>In progress</span>
-: winner === "H" ? <span style={{ fontSize:13, color:"#facc15", fontWeight:700 }}>Halved · ½pt each</span>
-: <span style={{ fontSize:13, color:(winner==="A"?tA:tB).color, fontWeight:700 }}>{(winner==="A"?tA:tB).name} wins · 1pt</span>}
+: winner === "H" ? <span style={{ fontSize:13, color:"#facc15", fontWeight:700 }}>Halved · ½ 🍆 each</span>
+: <span style={{ fontSize:13, color:(winner==="A"?tA:tB).color, fontWeight:700 }}>{(winner==="A"?tA:tB).name} wins · 1 🍆</span>}
 </div>
 <div style={{ display:"grid", gridTemplateColumns:"repeat(9, 1fr)", gap:3 }}>
 {nineHoles.map((h, hi) => {
@@ -385,7 +385,7 @@ return (
 <div key={tid} style={{ flex:1, padding:"6px 8px", textAlign:"center", borderLeft:i>0?"1px solid #1e3a24":"none", background:mp===bestMP?"#1a2e1a":"transparent" }}>
 <div style={{ fontSize:13, color:t.color, fontWeight:700 }}>{t.name}</div>
 <div style={{ fontSize:14, color:"#c8e6d2" }}>{nineDots[tid]}<span style={{fontSize:12,color:"#4a6a54"}}>d</span></div>
-<div style={{ fontSize:16, fontWeight:700, color:mp===bestMP?t.color:"#6b9f7e" }}>{mp}<span style={{fontSize:12,color:"#4a6a54"}}> mp</span></div>
+<div style={{ fontSize:16, fontWeight:700, color:mp===bestMP?t.color:"#6b9f7e" }}>{mp}<span style={{fontSize:12,color:"#4a6a54"}}> 🍆</span></div>
 </div>
 );
 })}
@@ -518,7 +518,7 @@ style={{...inputStyle(t.color), marginBottom:6}} />
 <div key={t.id} style={{ flex:1, padding:"10px 16px", textAlign:i===0?"left":"right", borderLeft:i===1?"1px solid #1e3a24":"none" }}>
 <div style={{ fontSize:13, color:t.color, textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:2 }}>{label}</div>
 <div style={{ fontSize:34, fontWeight:700, color:pts>opp?t.color:pts===opp&&pts>0?"#facc15":"#f0f9f4", lineHeight:1 }}>{pts}</div>
-<div style={{ fontSize:13, color:"#4a6a54" }}>pts</div>
+<div style={{ fontSize:13, color:"#4a6a54" }}>🍆</div>
 </div>
 ))}
 </div>
@@ -598,7 +598,7 @@ return (
 <div style={{ fontSize:26, fontWeight:700, color:d===bestDots&&d>0?t.color:"#f0f9f4", lineHeight:1 }}>{d}</div>
 <div style={{ fontSize:13, color:"#4a6a54", marginBottom:4 }}>dots</div>
 <div style={{ fontSize:18, fontWeight:700, color:mp===bestMP&&mp>0?t.color:"#6b9f7e" }}>{mp}</div>
-<div style={{ fontSize:13, color:"#4a6a54" }}>match pts</div>
+<div style={{ fontSize:13, color:"#4a6a54" }}>🍆s</div>
 </div>
 ))}
 </div>
@@ -653,7 +653,7 @@ return (
 <span style={{ fontSize:18, width:20 }}>{i===0?"🥇":i===1?"🥈":"🥉"}</span>
 <span style={{ color:t.color, fontWeight:700, flex:1 }}>{name}</span>
 <span style={{ color:"#c8e6d2", fontWeight:700, fontSize:18 }}>{d}<span style={{ color:"#4a6a54", fontSize:14 }}> dots</span></span>
-<span style={{ color:t.color, fontWeight:700, fontSize:18, marginLeft:8 }}>{mp}<span style={{ color:"#4a6a54", fontSize:14 }}> mp</span></span>
+<span style={{ color:t.color, fontWeight:700, fontSize:18, marginLeft:8 }}>{mp}<span style={{ color:"#4a6a54", fontSize:14 }}> 🍆</span></span>
 </div>
 ))}
 </div>
@@ -703,14 +703,14 @@ const smp = calcSinglesMatchPlayTotal(sh, day.nines);
 const totalDayPts = { A: dayMatchPts.A + smp.A, B: dayMatchPts.B + smp.B, C: dayMatchPts.C + smp.C };
 return (
 <div style={{ background:"#0a1a0f", borderRadius:10, padding:16, border:"1px solid #1e3a24" }}>
-<div style={{ fontSize:14, color:"#4ade80", textTransform:"uppercase", letterSpacing:"0.15em", marginBottom:12 }}>Day Points</div>
+<div style={{ fontSize:14, color:"#4ade80", textTransform:"uppercase", letterSpacing:"0.15em", marginBottom:12 }}>Day 🍆s</div>
 {[tA,tB,tC].sort((a,b) => totalDayPts[b.id]-totalDayPts[a.id]).map((t) => (
 <div key={t.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
 <span style={{ color:t.color, fontWeight:700, flex:1 }}>{t.name}</span>
 <span style={{ color:"#6b9f7e", fontSize:16 }}>{dayMatchPts[t.id]} team</span>
 <span style={{ color:"#4a6a54", fontSize:15 }}>+</span>
 <span style={{ color:"#6b9f7e", fontSize:16 }}>{smp[t.id]} singles</span>
-<span style={{ color:"#f0f9f4", fontWeight:700, fontSize:20, marginLeft:4 }}>{totalDayPts[t.id]}<span style={{ color:"#4a6a54", fontSize:14 }}> pts</span></span>
+<span style={{ color:"#f0f9f4", fontWeight:700, fontSize:20, marginLeft:4 }}>{totalDayPts[t.id]}<span style={{ color:"#4a6a54", fontSize:14 }}> 🍆</span></span>
 </div>
 ))}
 </div>
@@ -736,7 +736,7 @@ const maxMatchPts = 24;
 
 return (
 <div style={{ background:"#0d1f11", borderBottom:"1px solid #1e3a24", padding:"16px 20px" }}>
-<div style={{ fontSize:14, letterSpacing:"0.25em", color:"#4ade80", textTransform:"uppercase", marginBottom:12 }}>Championship Standings</div>
+<div style={{ fontSize:14, letterSpacing:"0.25em", color:"#4ade80", textTransform:"uppercase", marginBottom:12 }}>🏆 Championship Standings</div>
 {sorted.map((t,i) => (
 <div key={t.id} style={{ marginBottom:12 }}>
 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4, alignItems:"center" }}>
@@ -745,7 +745,7 @@ return (
 <span style={{ color:"#4a6a54", fontSize:15, fontWeight:400 }}> ({t.captain})</span>
 </span>
 <div>
-<span style={{ color:"#c8e6d2", fontSize:17, fontWeight:700 }}>{t.matchPts}<span style={{ color:"#4a6a54", fontSize:14, fontWeight:400 }}> pts</span></span>
+<span style={{ color:"#c8e6d2", fontSize:17, fontWeight:700 }}>{t.matchPts}<span style={{ color:"#4a6a54", fontSize:14, fontWeight:400 }}> 🍆</span></span>
 <span style={{ color:"#4a6a54", fontSize:15 }}> · </span>
 <span style={{ color:t.color, fontSize:16, fontWeight:700 }}>{t.dots}<span style={{ color:"#4a6a54", fontSize:14, fontWeight:400 }}> dots</span></span>
 </div>
@@ -880,9 +880,9 @@ teams={teams} onClose={() => setShowRecap(false)} />
 {/* Header */}
 <div style={{ background:"#0d1f11", borderBottom:"1px solid #1e3a24", padding:"14px 20px", display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
 <div>
-<div style={{ fontSize:13, letterSpacing:"0.3em", color:"#4ade80", textTransform:"uppercase" }}>Pawleys Island · 2025</div>
+<div style={{ fontSize:13, letterSpacing:"0.3em", color:"#4ade80", textTransform:"uppercase" }}>Pawleys Island · 2026</div>
 <div style={{ fontSize:26, fontWeight:700, color:"#f0f9f4" }}>Bushwood Cup</div>
-<div style={{ fontSize:15, color:"#6b9f7e", fontStyle:"italic", fontFamily:"Georgia, serif" }}>Match Play · 1pt per 9 · 6-dot Singles</div>
+<div style={{ fontSize:15, color:"#6b9f7e", fontStyle:"italic", fontFamily:"Georgia, serif" }}>Match Play · 1 🍆 per 9 · 6-dot Singles</div>
 </div>
 <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:8 }}>
 <div style={{ display:"flex", alignItems:"center", gap:6 }}>

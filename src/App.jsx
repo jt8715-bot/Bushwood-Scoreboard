@@ -167,15 +167,53 @@ if (pts) { total.A += pts.A; total.B += pts.B; total.C += pts.C; }
 return total;
 }
 
-function getNineResult(holes, nineHoles) {
-let a = 0, b = 0;
-nineHoles.forEach(h => {
+// ─── Per-nine independent match play ─────────────────────────────────────────
+// Each nine is its own match. Ends early when lead > holes remaining IN THAT NINE.
+function getNineStatus(holes, nineHoles) {
+const total = nineHoles.length;
+let winsA = 0, winsB = 0;
+let matchOverAt = -1;
+
+for (let i = 0; i < total; i++) {
+const h = nineHoles[i];
 const v = holes[h] || holes[String(h)];
-if (v === "A") a++; else if (v === "B") b++;
-});
-const played = nineHoles.filter(h => holes[h] || holes[String(h)]).length;
-if (played < 9) return null;
-return a > b ? "A" : b > a ? "B" : "H";
+if (v === "A") winsA++;
+else if (v === "B") winsB++;
+else if (v === "H") {} // halved, counts as played
+else break; // unscored hole — stop here
+
+const remaining = total - (i + 1);
+const diff = winsA - winsB;
+const up = Math.abs(diff);
+if (up > remaining) { matchOverAt = i; break; }
+}
+
+const holesPlayed = matchOverAt >= 0 ? matchOverAt + 1
+: nineHoles.filter(h => holes[h] || holes[String(h)]).length;
+const holesRemaining = total - holesPlayed;
+const diff = winsA - winsB;
+const up = Math.abs(diff);
+const leader = diff > 0 ? "A" : diff < 0 ? "B" : null;
+const over = matchOverAt >= 0;
+const dormie = !over && leader && up === holesRemaining && holesRemaining > 0;
+
+let statusText = "";
+if (holesPlayed === 0) statusText = "Not started";
+else if (over) statusText = `${up}&${holesRemaining}`;
+else if (holesPlayed === total) statusText = !leader ? "All Square" : `${up} UP`;
+else if (dormie) statusText = `Dormie ${up}`;
+else if (!leader) statusText = "All Square";
+else statusText = `${up} UP`;
+
+const lockedHoles = new Set(over ? nineHoles.slice(matchOverAt + 1) : []);
+return { leader, up, holesPlayed, holesRemaining, dormie, over, statusText, total, lockedHoles, winsA, winsB };
+}
+
+function getNineResult(holes, nineHoles) {
+const s = getNineStatus(holes, nineHoles);
+if (s.over) return s.leader || "H";
+if (s.holesPlayed === s.total) return s.leader || "H";
+return null;
 }
 
 function calcTeamMatchPts(holes, nines) {
@@ -187,49 +225,17 @@ if (w === "A") pA++; else if (w === "B") pB++; else if (w === "H") { pA += 0.5; 
 return { pA, pB };
 }
 
-// ─── Match play live status (current standing through holes played) ────────────
-// Returns { leader: 'A'|'B'|null, up: number, holesPlayed, holesRemaining, dormie, over, overText }
 function getMatchPlayStatus(holes, nines) {
-const allHoles = nines.flat();
-const total = allHoles.length;
-let winsA = 0, winsB = 0;
-let lastPlayedIdx = -1;
-
-allHoles.forEach((h, i) => {
-const v = holes[h] || holes[String(h)];
-if (v === "A") { winsA++; lastPlayedIdx = i; }
-else if (v === "B") { winsB++; lastPlayedIdx = i; }
-else if (v === "H") { lastPlayedIdx = i; }
-});
-
-const holesPlayed = lastPlayedIdx + 1;
-const holesRemaining = total - holesPlayed;
-const diff = winsA - winsB;
-const up = Math.abs(diff);
-const leader = diff > 0 ? "A" : diff < 0 ? "B" : null;
-
-// Match over if leader's lead > holes remaining
-const over = leader && up > holesRemaining;
-// Dormie = lead equals holes remaining
-const dormie = leader && up === holesRemaining && holesRemaining > 0;
-
-let statusText = "";
-if (holesPlayed === 0) {
-statusText = "Not started";
-} else if (over) {
-statusText = `${up}&${holesRemaining}`;
-} else if (holesPlayed === total) {
-if (!leader) statusText = "All Square";
-else statusText = `${up} UP`;
-} else if (dormie) {
-statusText = `Dormie ${up}`;
-} else if (!leader) {
-statusText = `All Square`;
-} else {
-statusText = `${up} UP`;
+// Show status of current active nine
+let activeIdx = 0;
+for (let i = 0; i < nines.length; i++) {
+const s = getNineStatus(holes, nines[i]);
+activeIdx = i;
+if (!s.over && s.holesPlayed < s.total) break;
 }
-
-return { leader, up, holesPlayed, holesRemaining, dormie, over, statusText, total };
+const s = getNineStatus(holes, nines[activeIdx]);
+const totalPlayed = nines.slice(0, activeIdx).reduce((acc, n) => acc + n.length, 0) + s.holesPlayed;
+return { ...s, holesPlayed: totalPlayed, total: nines.flat().length };
 }
 
 function calcStandings(teamHolesAll, singlesHolesAll) {
@@ -295,27 +301,34 @@ if (last.prev === null) onUndo(last.matchupId, last.h);
 return (
 <div>
 {nines.map((nineHoles, si) => {
+const nineStatus = getNineStatus(holes, nineHoles);
 const winner = getNineResult(holes, nineHoles);
+const { over, lockedHoles, statusText, dormie } = nineStatus;
+const statusColor = over ? (nineStatus.leader==="A"?tA.color:tB.color)
+: dormie ? "#facc15" : nineStatus.leader ? (nineStatus.leader==="A"?tA.color:tB.color) : "#6b9f7e";
 return (
-<div key={si} style={{ marginBottom:14 }}>
-<div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+<div key={si} style={{ marginBottom:16, opacity: si > 0 && !getNineStatus(holes, nines[si-1]).over && getNineStatus(holes, nines[si-1]).holesPlayed < 9 ? 0.4 : 1 }}>
+<div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
 <span style={{ fontSize:14, color:"#6b9f7e", letterSpacing:"0.15em", textTransform:"uppercase" }}>{nineLabels[si]}</span>
-{winner === null ? <span style={{ fontSize:13, color:"#374a3c" }}>In progress</span>
-: winner === "H" ? <span style={{ fontSize:13, color:"#facc15", fontWeight:700 }}>Halved · ½ 🍆 each</span>
-: <span style={{ fontSize:13, color:(winner==="A"?tA:tB).color, fontWeight:700 }}>{(winner==="A"?tA:tB).name} wins · 1 🍆</span>}
+<span style={{ fontSize:13, color: winner ? (winner==="H"?"#facc15":(winner==="A"?tA:tB).color) : statusColor, fontWeight: over||winner ? 700 : 500 }}>
+{winner === "H" ? "Halved · ½ 🍆 each"
+: winner ? `${(winner==="A"?tA:tB).name} wins · 1 🍆`
+: statusText}
+</span>
 </div>
 <div style={{ display:"grid", gridTemplateColumns:"repeat(9, 1fr)", gap:3 }}>
 {nineHoles.map((h, hi) => {
 const r = holes[h] || holes[String(h)];
+const locked = lockedHoles.has(h);
 return (
-<div key={h} style={{ textAlign:"center" }}>
+<div key={h} style={{ textAlign:"center", opacity: locked ? 0.25 : 1 }}>
 <div style={{ fontSize:12, color:"#4a6a54", marginBottom:2 }}>{hi+1}</div>
 {["A","H","B"].map(res => {
 const active = r === res;
 const bg = active ? (res==="A"?tA.color:res==="B"?tB.color:"#92400e") : "#0a1a0f";
 return (
-<button key={res} onClick={() => handleScore(matchupId, h, res)}
-style={{ display:"block", width:"100%", marginBottom:2, background:bg, border:`1px solid ${active?bg:"#1e3a24"}`, borderRadius:3, color:active?"#fff":"#374a3c", fontSize:12, padding:"3px 0", cursor:"pointer", fontWeight:active?700:400 }}>
+<button key={res} onClick={() => !locked && handleScore(matchupId, h, res)}
+style={{ display:"block", width:"100%", marginBottom:2, background:bg, border:`1px solid ${active?bg:"#1e3a24"}`, borderRadius:3, color:active?"#fff":"#374a3c", fontSize:12, padding:"3px 0", cursor:locked?"default":"pointer", fontWeight:active?700:400 }}>
 {res==="A"?tA.id:res==="B"?tB.id:"H"}
 </button>
 );
@@ -726,6 +739,167 @@ Close
 );
 }
 
+
+// ─── Individual W/L/H record ─────────────────────────────────────────────────
+// W/L/H per player across team match nines + singles nines
+function calcPlayerRecords(teamHolesAll, singlesHolesAll, teamPairings, singlesPairings) {
+const records = {}; // { name: { w, l, h, team } }
+
+function ensure(name, team) {
+if (!name || !name.trim()) return;
+if (!records[name]) records[name] = { w:0, l:0, h:0, team };
+}
+function addResult(name, result) {
+if (!name || !name.trim()) return;
+if (result === "W") records[name].w++;
+else if (result === "L") records[name].l++;
+else if (result === "H") records[name].h++;
+}
+
+// Team matches — per nine
+SCHEDULE.forEach(d => {
+d.teamMatchups.forEach(m => {
+const h = teamHolesAll[m.id] || {};
+const pair = teamPairings[m.id] || {};
+const namesA = (pair.namesA || []).filter(Boolean);
+const namesB = (pair.namesB || []).filter(Boolean);
+const tA = getTeamById([], m.groupA); // just for team ref
+namesA.forEach(n => ensure(n, m.groupA));
+namesB.forEach(n => ensure(n, m.groupB));
+d.nines.forEach(nine => {
+const result = getNineResult(h, nine);
+if (!result) return;
+namesA.forEach(n => {
+if (!n) return;
+addResult(n, result === "A" ? "W" : result === "B" ? "L" : "H");
+});
+namesB.forEach(n => {
+if (!n) return;
+addResult(n, result === "B" ? "W" : result === "A" ? "L" : "H");
+});
+});
+});
+});
+
+// Singles — per nine, based on dots (most dots = W)
+SCHEDULE.forEach(d => {
+const sh = singlesHolesAll[d.singlesId] || {};
+const sp = singlesPairings[d.singlesId] || {};
+const players = { A: sp.nameA, B: sp.nameB, C: sp.nameC };
+Object.entries(players).forEach(([tid, name]) => ensure(name, tid));
+d.nines.forEach(nine => {
+const mp = calcNineMatchPlayPts(sh, nine);
+if (!mp) return;
+// 2 pts = W, 1 pt = H (tie for 1st or clean 2nd), 0 = L
+// But for W/L/H: most dots = W, least = L, middle = H, ties handled
+const sorted = [
+{tid:"A", mp: mp.A},
+{tid:"B", mp: mp.B},
+{tid:"C", mp: mp.C},
+].sort((a,b) => b.mp - a.mp);
+
+if (sorted[0].mp === sorted[1].mp && sorted[1].mp === sorted[2].mp) {
+// 3-way tie
+["A","B","C"].forEach(tid => addResult(players[tid], "H"));
+} else if (sorted[0].mp === sorted[1].mp) {
+// Tie for 1st
+addResult(players[sorted[0].tid], "H");
+addResult(players[sorted[1].tid], "H");
+addResult(players[sorted[2].tid], "L");
+} else if (sorted[1].mp === sorted[2].mp) {
+// Tie for last
+addResult(players[sorted[0].tid], "W");
+addResult(players[sorted[1].tid], "L");
+addResult(players[sorted[2].tid], "L");
+} else {
+addResult(players[sorted[0].tid], "W");
+addResult(players[sorted[1].tid], "H");
+addResult(players[sorted[2].tid], "L");
+}
+});
+});
+
+return Object.entries(records)
+.filter(([name]) => name && name.trim())
+.map(([name, r]) => ({ name, ...r }))
+.sort((a, b) => {
+// Sort by wins desc, then losses asc
+if (b.w !== a.w) return b.w - a.w;
+if (a.l !== b.l) return a.l - b.l;
+return 0;
+});
+}
+
+// ─── Individual Leaderboard Screen ───────────────────────────────────────────
+function IndividualLeaderboard({ teamHolesAll, singlesHolesAll, teamPairings, singlesPairings, teams }) {
+const board = calcPlayerRecords(teamHolesAll, singlesHolesAll, teamPairings, singlesPairings);
+const medals = ["🥇","🥈","🥉"];
+
+function getPlayerTeam(name, teamId) {
+return getTeamById(teams, teamId);
+}
+
+return (
+<div style={{ padding:"16px", maxWidth:640, margin:"0 auto" }}>
+<div style={{ fontSize:14, color:"#4ade80", letterSpacing:"0.2em", textTransform:"uppercase", marginBottom:4 }}>Individual</div>
+<div style={{ fontSize:22, fontWeight:700, color:"#f0f9f4", marginBottom:4 }}>Match Record</div>
+<div style={{ fontSize:14, color:"#6b9f7e", fontStyle:"italic", fontFamily:"Georgia, serif", marginBottom:20 }}>Team matches + Singles · per nine</div>
+
+{/* Column headers */}
+<div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10, paddingBottom:8, borderBottom:"1px solid #1e3a24" }}>
+<span style={{ width:28 }} />
+<span style={{ flex:1, fontSize:12, color:"#4a6a54", textTransform:"uppercase", letterSpacing:"0.1em" }}>Player</span>
+<span style={{ width:36, textAlign:"center", fontSize:12, color:"#4ade80", fontWeight:700 }}>W</span>
+<span style={{ width:36, textAlign:"center", fontSize:12, color:"#facc15", fontWeight:700 }}>H</span>
+<span style={{ width:36, textAlign:"center", fontSize:12, color:"#e05c5c", fontWeight:700 }}>L</span>
+<span style={{ width:48, textAlign:"center", fontSize:12, color:"#4a6a54" }}>W%</span>
+</div>
+
+{board.length === 0 ? (
+<div style={{ textAlign:"center", color:"#4a6a54", fontSize:16, marginTop:60 }}>
+No scores yet — enter player names and scores to populate
+</div>
+) : (
+board.map(({ name, w, l, h, team }, i) => {
+const t = getPlayerTeam(name, team);
+const color = t?.color || "#6b9f7e";
+const total = w + l + h;
+const winPct = total > 0 ? Math.round((w / total) * 100) : 0;
+const prevRecord = i > 0 ? board[i-1] : null;
+const tied = prevRecord && prevRecord.w === w && prevRecord.l === l;
+return (
+<div key={name} style={{ marginBottom:12 }}>
+<div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+<span style={{ fontSize:18, width:28, flexShrink:0 }}>{i < 3 && !tied ? medals[i] : `${i+1}.`}</span>
+<div style={{ flex:1 }}>
+<div style={{ display:"flex", alignItems:"center", gap:10 }}>
+<div style={{ flex:1 }}>
+<div style={{ color, fontWeight:700, fontSize:16 }}>{name}</div>
+{t && <div style={{ fontSize:12, color:"#4a6a54" }}>{t.name}</div>}
+</div>
+<span style={{ width:36, textAlign:"center", fontSize:18, color:"#4ade80", fontWeight:700 }}>{w}</span>
+<span style={{ width:36, textAlign:"center", fontSize:18, color:"#facc15", fontWeight:700 }}>{h}</span>
+<span style={{ width:36, textAlign:"center", fontSize:18, color:"#e05c5c", fontWeight:700 }}>{l}</span>
+<span style={{ width:48, textAlign:"center", fontSize:14, color: winPct >= 50 ? "#4ade80" : "#6b9f7e", fontWeight:700 }}>{winPct}%</span>
+</div>
+{/* Win bar */}
+{total > 0 && (
+<div style={{ display:"flex", height:5, borderRadius:4, overflow:"hidden", marginTop:6 }}>
+<div style={{ width:`${winPct}%`, background:"#4ade80", transition:"width 0.4s" }} />
+<div style={{ width:`${Math.round((h/total)*100)}%`, background:"#facc15" }} />
+<div style={{ flex:1, background:"#e05c5c" }} />
+</div>
+)}
+</div>
+</div>
+</div>
+);
+})
+)}
+</div>
+);
+}
+
 // ─── Standings ────────────────────────────────────────────────────────────────
 function Standings({ teamHolesAll, singlesHolesAll, teams }) {
 const { matchPts, dots } = calcStandings(teamHolesAll, singlesHolesAll);
@@ -787,6 +961,7 @@ const [teamPairings, setTeamPairings] = useState(initialTeamPairings);
 const [singlesPairings, setSinglesPairings] = useState(initialSinglesPairings);
 const [teams, setTeams] = useState(DEFAULT_TEAMS);
 const [activeDay, setActiveDay] = useState(0);
+const [activeTab, setActiveTab] = useState("scores");
 const [connected, setConnected] = useState(false);
 const [syncing, setSyncing] = useState(false);
 const [showEdit, setShowEdit] = useState(false);
@@ -899,6 +1074,28 @@ style={{ background:"transparent", border:"1px solid #1e3a24", borderRadius:7, c
 {showEdit && <GroupNameEditor teams={teams} onChange={handleTeamChange} />}
 <Standings teamHolesAll={teamHoles} singlesHolesAll={singlesHoles} teams={teams} />
 
+{/* Main Tabs: Scores | Leaderboard */}
+<div style={{ display:"flex", background:"#0d1f11", borderBottom:"1px solid #1e3a24" }}>
+{[{id:"scores",label:"⛳ Scores"},{id:"leaderboard",label:"🏅 Leaderboard"}].map(tab => (
+<button key={tab.id} onClick={() => setActiveTab(tab.id)}
+style={{ flex:1, background:"transparent", border:"none", borderBottom:activeTab===tab.id?"2px solid #4ade80":"2px solid transparent", color:activeTab===tab.id?"#f0f9f4":"#4a6a54", padding:"12px 4px", cursor:"pointer", fontFamily:"'Playfair Display', serif", fontSize:15, fontWeight:700 }}>
+{tab.label}
+</button>
+))}
+</div>
+
+{activeTab === "leaderboard" && (
+<IndividualLeaderboard
+teamHolesAll={teamHoles}
+singlesHolesAll={singlesHoles}
+teamPairings={teamPairings}
+singlesPairings={singlesPairings}
+teams={teams}
+/>
+)}
+
+{activeTab === "scores" && (
+<>
 {/* Day Tabs */}
 <div style={{ display:"flex", background:"#0d1f11", borderBottom:"1px solid #1e3a24" }}>
 {SCHEDULE.map((d,i) => (
@@ -936,6 +1133,8 @@ teams={teams} nines={day.nines} nineLabels={day.nineLabels}
 onScore={handleTeamScore} onUndo={handleTeamUndo} onPairingChange={handleTeamPairingChange} />
 ))}
 </div>
+</>
+)}
 </div>
 );
 }
